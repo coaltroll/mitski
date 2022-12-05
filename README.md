@@ -1,2 +1,3 @@
 # mitski
-sinatra clone
+Dev: **Mortaza**
+This is a sinatra clone

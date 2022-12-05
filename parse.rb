@@ -2,7 +2,12 @@ require 'pp'
 
 def parse_request(request_string)
     first_line = request_string.split("\n").first.split(" ")
-    headers = request_string.split("\n").drop(1).map { |row| row.split(": ") }.to_h
+    headers = request_string.split("\n").
+        drop(1).
+        map { |row| row.split(": ") }.
+        to_h.
+        map { |key, value| value.include?(", ") ? [key, value.split(", ")] : [key, value] }.
+        to_h
     request = { 'verb': first_line[0], 'resource': first_line[1], 'headers': headers }
 
     return request

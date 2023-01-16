@@ -1,23 +1,19 @@
 require 'socket'
 require 'pp'
 require_relative 'lib/request_handler.rb'
+require_relative 'lib/status.rb'
 
 class HTTPServer
 
 	NO_FILE_ERROR = Errno::ENOENT.freeze
+	IS_A_DIRECTORY = Errno::EISDIR.freeze
 
 	def initialize(port)
 		@port = port
+		@resource_directory = "html"
 	end
 
-	def error_404(resource, session)
-		session.print "HTTP/1.1 404\r\n"
-		session.print "Content-Type: text/html\r\n"
-		session.print "\r\n"
-		session.print "<h1> error 404 </h1> \n<p> resource: \"#{resource}\" does not exist. </p>"
-		session.close
-	end
-
+	
 	def start
 		server = TCPServer.new(@port)
 		puts "Listening on #{@port}"
@@ -38,42 +34,29 @@ class HTTPServer
 			request = RequestHandler.parse_request(data)
 			
 			# access resource/file
-			resource_request = request["resource"]
-			resource_path = "html" + resource_request
+			request_resource = request["resource"]
+			resource_path = @resource_directory + request_resource
+
 
 			begin # attempt to open file
 				resource_file = File.open(resource_path, "r")
 
-			rescue NO_FILE_ERROR => exception # error 404
-				session.print "HTTP/1.1 404\r\n"
-				session.print "Content-Type: text/html\r\n"
-				session.print "\r\n"
-				session.print "<h1> error 404 </h1> \n<p> resource: \"#{resource_request}\" does not exist. </p>"
-				session.close
+			rescue NO_FILE_ERROR, IS_A_DIRECTORY => e # error 404
+				Status::status_404(session, request_resource)
 				next
 
 			end
 			
+
 			resource_plaintext = resource_file.read
 			resource_file.close
 			
-
-			resource_extension = resource_request.split(".").last
+			resource_extension = request_resource.split(".").last
 
 			if resource_extension == "html"
-				html = resource_plaintext
-
-				session.print "HTTP/1.1 200\r\n"
-				session.print "Content-Type: text/html\r\n"
-				session.print "\r\n"
-				session.print html
-				session.close
-			else
-				session.print "HTTP/1.1 420\r\n"
-				session.print "Content-Type: text/html\r\n"
-				session.print "\r\n"
-				session.print "<p> Mitski only supports HTML </p>"
-				session.close
+				Status::status_200(session, resource_plaintext)
+			else # resource filetype not supported
+				Status::status_403(session)
 			end
 		end
 	end

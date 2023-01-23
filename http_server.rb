@@ -8,6 +8,9 @@ class HTTPServer
 	NO_FILE_ERROR = Errno::ENOENT.freeze
 	IS_A_DIRECTORY = Errno::EISDIR.freeze
 
+	TEXT = {css: "text/css", csv: "text/csv", html: "text/html", js: "text/javascript", txt: "text/plain", xml: "text/xml"}
+	
+
 	def initialize(port)
 		@port = port
 		@resource_directory = "html"
@@ -46,15 +49,20 @@ class HTTPServer
 				next
 
 			end
-			
 
+			# headers
+			content_length = resource_file.size.to_s
+			headers = {'Content-Length'=> content_length}
+
+			# resource
 			resource_plaintext = resource_file.read
 			resource_file.close
 			
+			# resource extension
 			resource_extension = request_resource.split(".").last
 
 			if resource_extension == "html"
-				Status::status_200(session, resource_plaintext)
+				Status::status_200(session, resource_plaintext, headers)
 			else # resource filetype not supported
 				Status::status_403(session)
 			end

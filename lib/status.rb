@@ -1,9 +1,14 @@
 module Status
 
     # Success
-    def self.status_200(session, html)
+    def self.status_200(session, html, headers)
         session.print "HTTP/1.1 200\r\n"
-        session.print "Content-Type: text/html\r\n"
+        session.print "Content-Type: text/html; charset=\r\n"
+        
+        headers.each do |id, value|
+            session.print id + ": " + value + "\r\n"
+        end
+
         session.print "\r\n"
         session.print html
         session.close

@@ -1,15 +1,12 @@
 require 'socket'
 require 'pp'
 require_relative 'lib/request_handler.rb'
-require_relative 'lib/status.rb'
+require_relative 'lib/tools.rb'
 
 class HTTPServer
 
 	NO_FILE_ERROR = Errno::ENOENT.freeze
 	IS_A_DIRECTORY = Errno::EISDIR.freeze
-
-	TEXT = {css: "text/css", csv: "text/csv", html: "text/html", js: "text/javascript", txt: "text/plain", xml: "text/xml"}
-	
 
 	def initialize(port)
 		@port = port
@@ -24,7 +21,7 @@ class HTTPServer
 		while session = server.accept
 			data = ""
 
-			while line = session.gets and line !~ /^\s*$/
+			while line = session.gets and line !~ /^\s*$/ # line != blank
 				data += line
 			end
 			
@@ -34,25 +31,24 @@ class HTTPServer
 			puts "-" * 40 
 
 			# parse http request
-			request = RequestHandler.parse_request(data)
+			request = RequestHandler.parse_request(data) # => {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
 			
 			# access resource/file
-			request_resource = request["resource"]
-			resource_path = @resource_directory + request_resource
+			resource_filename = request["resource"]
+			resource_path = @resource_directory + resource_filename
 
 
 			begin # attempt to open file
 				resource_file = File.open(resource_path, "r")
 
 			rescue NO_FILE_ERROR, IS_A_DIRECTORY => e # error 404
-				Status::status_404(session, request_resource)
+				Tools::Status::status_404(session, request_resource)
 				next
 
 			end
 
 			# headers
-			content_length = resource_file.size.to_s
-			headers = {'Content-Length'=> content_length}
+			headers = Tools::headers(file, request)
 
 			# resource
 			resource_plaintext = resource_file.read
@@ -62,9 +58,9 @@ class HTTPServer
 			resource_extension = request_resource.split(".").last
 
 			if resource_extension == "html"
-				Status::status_200(session, resource_plaintext, headers)
+				Tools::Status::status_200(session, resource_plaintext, headers)
 			else # resource filetype not supported
-				Status::status_403(session)
+				Tools::Status::status_403(session)
 			end
 		end
 	end

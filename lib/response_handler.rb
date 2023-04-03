@@ -1,27 +1,39 @@
-# Hugo approved 2023-02-07
-
 require 'mime/types'
 require 'socket'
 
+# has class methods used for finding resource files and sending responses
 class ResponseHandler
 
+	# Errno error code for "no file found"
 	NO_FILE_ERROR = Errno::ENOENT.freeze
+	# Errno error code for "is a directory"
 	IS_A_DIRECTORY = Errno::EISDIR.freeze
+	# directory (from app.rb) where all the resources are
 	RESOURCE_DIRECTORY = "resources".freeze
 	
+	# takes in Request object and sends a response depending on the object's attributes 
+  #
+  # @param session [TCPSocket] socket session
+	# @param request [Request] Request object 
+  # @return [void]
 	def self.send_response(session, request)
-		resource_output = parse_response(request)
+		content = parse_response(request)
 
-		if resource_output.is_a? Integer # resource_output is an error code
-			error_response(session, request.resource, resource_output)
+		if content.is_a? Integer # content is an error code
+			error_response(session, request.resource, content)
 		
-		else # resource_output is a {resource: resource_string, headers: headers_hash}
-			successful_response(session, resource_output[:resource], resource_output[:headers])
+		else # content is a {content: content_string, headers: headers_hash}
+			successful_response(session, content[:content], content[:headers])
 		end
 	end
 
-	# Status code 200
-	def self.successful_response(session, resource, headers)
+	# takes in content of resource file, headers, and sends an html response
+  #
+  # @param session [TCPSocket] socket session
+	# @param content [String] plaintext contents of resource file in String format
+	# @param headers [Hash] {header-name1: "header value", header-name2: "...", ...}
+  # @return [void]
+	def self.successful_response(session, content, headers)
 		session.print "HTTP/1.1 200\r\n"
 		
 		headers.each do |header_type, header_value|
@@ -29,20 +41,29 @@ class ResponseHandler
 		end
 
 		session.print "\r\n"
-		session.print resource
+		session.print content
 		session.close
 	end
 
-	# Errors
-	def self.error_response(session, resource_name, error_code)
+	# takes in resource (from request), error code, and sends an html response telling the user there has been an error an what error it is
+  #
+  # @param session [TCPSocket] socket session
+	# @param resource [String] the same name of resource that is written in Request
+	# @param error_code [Integer] error code
+  # @return [void]
+	def self.error_response(session, resource, error_code)
 		session.print "HTTP/1.1 #{error_code}\r\n"
 		session.print "Content-Type: text/html\r\n"
 		session.print "\r\n"
-		session.print "<h1> error #{error_code} </h1> \n<p> error accessing resource: \"#{resource_name}\" </p>"
+		session.print "<h1> error #{error_code} </h1> \n<p> error accessing resource: \"#{resource}\" </p>"
 		session.close
 	end
 	
 	private
+		# takes Request object 
+		#
+		# @param request [Request] Request object used for creating headers and accessing resource file
+		# @return [Hash, Integer] Integer of error code if error, else: {content: "content of resource file as String", headers: {'content-length': "length", 'content-type': "type"}}
 		def self.parse_response(request)
 
 			resource_path = RESOURCE_DIRECTORY + request.resource
@@ -65,10 +86,8 @@ class ResponseHandler
 				return 404
 			end
 
-			# resource
-			resource_plaintext = resource_file.read
+			content = resource_file.read
 
-			# headers
 			headers = {
 				'content_length': resource_file.size.to_s,
 				'content_type': mime_type.to_s
@@ -76,6 +95,6 @@ class ResponseHandler
 
 			resource_file.close
 
-			return {resource: resource_plaintext, headers: headers}
+			{content: content, headers: headers}
 		end
 end

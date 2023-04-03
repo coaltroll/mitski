@@ -1,8 +1,8 @@
-require_relative 'http_server.rb'
+require_relative 'lib/http_server.rb'
 
 server = HTTPServer.new(4567)
 
-server.get('/banan/:name/dude') do |name|
+server.get('/banan/:name/dude') do |name| # /banan/morty/dude
 	html = <<-HTML
 		<!DOCTYPE html>
 		<html lang="en">

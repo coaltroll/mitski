@@ -1,43 +1,53 @@
 require 'socket'
-require 'pp'
 
+# reads requests, parses them, and has attributes for reading information about request
 class Request
 
 	attr_reader :verb, :resource, :version, :headers
 
+	# takes in request being sent to session and creates Request object with verb, resource, version, and headers of request 
+  #
+  # @param session [TCPSocket] socket session
+  # @return [Request] request object
 	def initialize(session)
 		request_hash = get_request(session)
-
+		
 		@verb = request_hash['verb']
 		@resource = request_hash['resource']
 		@version = request_hash['version']
 		@headers = request_hash['headers']
 	end
 
-	def method_missing(method_name)
-		method_name = method_name.to_s.gsub(/[_]/, "-").to_sym
+	# finds header in resource and returns its contents
+  #
+  # @param header_name [Symbol] name of header/ missing method
+  # @return [String, nil] the value of the header associated to header_name in @headers or nil if header does not exist in Request object
+	def method_missing(header_name)
+		method_name = header_name.to_s.gsub(/[_]/, "-").to_sym
 
 		@headers[method_name]
 	end
 
-	def print_request
-		pp @data
-	end
 
 	private
 		# reads raw request and returns parsed request as hash
+		#
+  	# @param session [TCPSocket] socket session
+  	# @return [String, nil] parsed hash request with verb, resource, version, and headers
 		def get_request(session)
-			@data = "" # dont make global, "REMOVE"
+			data = ""
 
 			while line = session.gets and line !~ /^\s*$/ # line != blank
-				@data += line
+				data += line
 			end
 
-			# parse and return http request
-			parse_request(@data) # => {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
+			parse_request(data) # => {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
 		end
 
-		# parsed raw request string into hash with verb, resource, version, and headers hash 
+		# parse raw request string into hash with verb, resource, version, and headers hash
+		#
+		# @param request [String] request string read from session
+		# @return [Hash] parsed request hash in the form: {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
 		def parse_request(request)
 			first_line = request.split("\n").first.split(" ")
 			

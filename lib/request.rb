@@ -34,7 +34,7 @@ class Request
   private
 
   # Returns parsed request as hash given a TCPSocket object (which contains a request)
-  # @param (see #initialize)
+  # @param session [TCPSocket] the object used for retrieving raw request data (with gets method)
   # @return [String, nil] the parsed hash request with verb, resource, version, and headers
   def get_request(session)
     data = ''

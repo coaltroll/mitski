@@ -28,9 +28,9 @@ class ResponseHandler
   end
 
   # Sends a response given a body and headers
-  # @param session [TCPSocket] (see #initialize)
+  # @param session [TCPSocket] the object needed to send back a response
   # @param body [String] the body of the response in String format
-  # @param headers [Hash] {header-name1: "header value", header-name2: "...", ...}
+  # @param headers [Hash] the headers to be sent in the response
   # @return [void]
   def self.successful_response(session, body, headers)
     session.print "HTTP/1.1 200\r\n"
@@ -45,7 +45,7 @@ class ResponseHandler
   end
 
   # Sends an html response with error message given a resource (from request) and an error code
-  # @param session [TCPSocket] (see #initialize)
+  # @param session [TCPSocket] the object needed to send back a response
   # @param resource [String] the same name of resource that is written in Request
   # @param error_code [Integer] the error code
   # @return [void]
@@ -58,14 +58,14 @@ class ResponseHandler
   end
 
   # Returns information needed for response given a Request object
-  # @param request [Request] (see #initialize)
+  # @param request [Request] the Request object used for accessing request information
   # @return [Hash, Integer] the error code if error, else: hash with body and headers keys
   def self.parse_response(request)
     resource_path = RESOURCE_DIRECTORY + request.resource
 
     mime_type = mime_type(resource_path)
 
-    resource_file = open_resource(mime_type, resource_path)
+    resource_file = open_resource(resource_path, mime_type.binary?)
 
     return resource_file if resource_file.is_a? Integer # error
 
@@ -81,6 +81,9 @@ class ResponseHandler
     { body: body, headers: headers }
   end
 
+  # Returns MIME::TYPE given a resource_path string
+  # @param resource_path [string] the path to the resource requested
+  # @return [MIME::TYPE] the first MIME::TYPE that matches with resource extension, otherwise [application/octet-stream]
   def self.mime_type(resource_path)
     mime_type = MIME::Types.type_for(resource_path).first
     if mime_type.nil?
@@ -90,10 +93,14 @@ class ResponseHandler
     end
   end
 
-  def self.open_resource(mime_type, resource_path)
+  # Returns a File with appropriate reading mode given a mime_type and resource_path. When error returns Integer 404
+  # @param resource_path [string] the path to the resource requested
+  # @param is_binary [boolean] the content type of the resource file
+  # @return [File, Integer] the File object for the resource or Integer status code 404 if file is not found
+  def self.open_resource(resource_path, is_binary)
     # attempt to open file
     begin
-      resource_file = if mime_type.binary?
+      resource_file = if is_binary
                         File.open(resource_path, 'rb')
                       else
                         resource_file = File.open(resource_path, 'r')
@@ -101,6 +108,7 @@ class ResponseHandler
     rescue NO_FILE_ERROR, IS_A_DIRECTORY # error 404
       return 404
     end
+    p resource_file
     resource_file
   end
 end

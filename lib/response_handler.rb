@@ -108,7 +108,6 @@ class ResponseHandler
     rescue NO_FILE_ERROR, IS_A_DIRECTORY # error 404
       return 404
     end
-    p resource_file
     resource_file
   end
 end

@@ -29,8 +29,7 @@ class Routes
   # @return [Hash, nil] the hash with route information if route is found, nil otherwise
   def find_route(resource)
     @routes.find do |route_properties|
-      resource =~ route_properties[:regex_match] && # check if regex matches with resource
-        resource !~ /\./ # TODO: what was this for? is it needed?
+      resource =~ route_properties[:regex_match]
     end
   end
 

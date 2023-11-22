@@ -1,4 +1,9 @@
-# mitski
-Dev: **Mortaza**
+# Mitski
+A barebones sinatra clone
 
-This is a sinatra clone
+## How to run
+- install dependecies: `bundle`
+- start test server: `app.rb`
+- run rubocop linter: `rubocop`
+- generate docs: `yardoc`
+- run tests `rake`

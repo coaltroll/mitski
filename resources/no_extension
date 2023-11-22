@@ -7,7 +7,7 @@
     <title>Document</title>
 </head>
 <body>
-    <img src="cat.jpg" alt="">
-    <h1>hello</h1>
+    <img src="images/cat.jpg" alt="">
+    <h1>no extension!</h1>
 </body>
 </html>

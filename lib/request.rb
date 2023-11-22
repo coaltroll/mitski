@@ -1,62 +1,81 @@
+# frozen_string_literal: true
+
 require 'socket'
 
-# reads requests, parses them, and has attributes for reading information about request
+# Reads requests, parses them, and has attributes for reading information about request
 class Request
+  attr_reader :verb, :resource, :version, :headers
 
-	attr_reader :verb, :resource, :version, :headers
+  # Returns Request object with verb, resource, version, and headers of HTTP request given a TCPSocket object
+  # @param session [TCPSocket] the object used for retrieving raw request data (with gets method)
+  # @return [Request] the request object
+  def initialize(session)
+    request = get_request(session)
 
-	# takes in request being sent to session and creates Request object with verb, resource, version, and headers of request 
-  #
-  # @param session [TCPSocket] socket session
-  # @return [Request] request object
-	def initialize(session)
-		request_hash = get_request(session)
-		
-		@verb = request_hash['verb']
-		@resource = request_hash['resource']
-		@version = request_hash['version']
-		@headers = request_hash['headers']
-	end
+    @verb = request['verb']
+    @resource = request['resource']
+    @version = request['version']
+    @headers = request['headers']
+  end
 
-	# finds header in resource and returns its contents
-  #
-  # @param header_name [Symbol] name of header/ missing method
-  # @return [String, nil] the value of the header associated to header_name in @headers or nil if header does not exist in Request object
-	def method_missing(header_name)
-		method_name = header_name.to_s.gsub(/[_]/, "-").to_sym
+  # Returns contents of a given header
+  # @param header_name [Symbol] the name of the header sought / missing method
+  # @return [String, nil] the value of sought header in @headers or nil if not found
+  def method_missing(header_name)
+    method_name = header_name.to_s.gsub('_', '-').to_sym
+    @headers[method_name]
+  end
 
-		@headers[method_name]
-	end
+  def respond_to_missing?(header_name)
+    method_name = header_name.to_s.gsub('_', '-').to_sym
+    @headers[method_name] || super
+  end
 
+  private
 
-	private
-		# reads raw request and returns parsed request as hash
-		#
-  	# @param session [TCPSocket] socket session
-  	# @return [String, nil] parsed hash request with verb, resource, version, and headers
-		def get_request(session)
-			data = ""
+  # Returns parsed request as hash given a TCPSocket object (which contains a request)
+  # @param (see #initialize)
+  # @return [String, nil] the parsed hash request with verb, resource, version, and headers
+  def get_request(session)
+    data = ''
 
-			while line = session.gets and line !~ /^\s*$/ # line != blank
-				data += line
-			end
+    while ((line = session.gets)) && line !~ (/^\s*$/) # line != blank
+      data += line
+    end
 
-			parse_request(data) # => {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
-		end
+    parse_request(data) # => {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
+  end
 
-		# parse raw request string into hash with verb, resource, version, and headers hash
-		#
-		# @param request [String] request string read from session
-		# @return [Hash] parsed request hash in the form: {'verb' => verb, 'resource' => resource, 'version' => version, 'headers' => {...}}
-		def parse_request(request)
-			first_line = request.split("\n").first.split(" ")
-			
-			headers = request.split("\n"). # get rows
-				drop(1). # remove request line
-				map { |row| row.split(": ") }. # 2d arr [[header_1, header_value_1], [header_2...], ...]
-				to_h. # hash {header_1: header_value_1, ...}
-				map { |key, value| value.include?(", ") ? [key, value.split(", ")] : [key, value] } # if header value has multiple choices/values, make array
+  # Returns request hash with verb, resource, version, and headers hash given raw request string
+  # @param request [String] the raw request string
+  # @return [Hash] the parsed request hash with verb, resource, version, and headers keys
+  def parse_request(request)
+    request_rows = request.split("\n")
+    request_line = request_rows.first.split
 
-			parsed_request = { 'verb' => first_line[0], 'resource' => first_line[1], 'version'=> first_line[2], 'headers'=> headers }
-		end
+    headers = parse_headers(request_rows)
+
+    {
+      'verb' => request_line[0],
+      'resource' => request_line[1],
+      'version' => request_line[2],
+      'headers' => headers
+    }
+  end
+
+  # Returns headers hash given array of lines/strings from request
+  # @param request_rows [Array<String>] the array of lines/rows/strings from the request
+  # @return [Hash] the parsed headers hash { header1: value1, header2: [value2_0, value2_1] }
+  def parse_headers(request_rows)
+    request_rows
+      .drop(1) # remove request line
+      .to_h { |row| row.split(': ') } # {header_1: header_value_1, ...}
+      .map do |key, value| # { header1: value1, header2: [value2_0, value2_1] }
+        if value.include?(', ')
+          [key, value.split(', ')]
+        else
+          [key, value]
+        end
+      end
+  end
 end

@@ -1,43 +1,40 @@
+# frozen_string_literal: true
+
 require 'socket'
-Dir[File.dirname(__FILE__) + '/*.rb'].each {|file| require file }
+require_relative 'request'
+require_relative 'response_handler'
+require_relative 'routes'
 
-# contains the flow for the web server and interaction between the classes
+# Contains logic for what to do when a request is recieved and an interface to add routes
 class HTTPServer
+  # Returns server given a port
+  # @param port [Integer] the port where the server is started
+  # @return [HTTPServer] the HTTPServer object
+  def initialize(port)
+    @port = port
+    @routes = Routes.new
+  end
 
-	# initializes server with its port and routes attribute
-  	#
-  	# @param port [Integer] port where server is started
-	# @return [HTTPServer] HTTPServer object
-  	def initialize(port)
-		@port = port
+  # Runs server
+  def start
+    server = TCPServer.new(@port)
+    puts "Listening on #{@port}"
 
-		@routes = Routes.new()
-	end
-	
-	# runs server
-  	def start
-		server = TCPServer.new(@port)
-		puts "Listening on #{@port}"
+    while (session = server.accept)
+      request = Request.new(session)
+      route = @routes.find_route(request.resource)
+      if route
+        @routes.send_response(session, route, request.resource)
+      else
+        ResponseHandler.send_response(session, request)
+      end
+    end
+  end
 
-		while session = server.accept
-			request = Request.new(session)
-
-			route = @routes.find_route(request.resource)
-
-			if route
-				@routes.send_response(session, route, request.resource)
-			else
-				ResponseHandler.send_response(session, request)
-			end
-
-		end
-	end
-
-	# adds a route
-  	#
-  	# @param path [String] route, example: /staticPart/:param/staticPart2
-	# @return [Array] returns routes attribute from @routes with route hashes which contain information about the routes
-	def get(path, &block)
-		@routes.add_route(path, &block)
-	end
+  # Adds a route
+  # @param route [String] the route, example: "/staticPart/:param/staticPart2"
+  # @return [Array] the array of route hashes which contain information about the routes
+  def get(route, &block)
+    @routes.add_route(route, &block)
+  end
 end

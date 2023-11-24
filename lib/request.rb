@@ -50,9 +50,8 @@ class Request
   # @param request [String] the raw request string
   # @return [Hash] the parsed request hash with verb, resource, version, and headers keys
   def parse_request(request)
-    request_rows = request.split("\n")
+    request_rows = request.split("\r\n")
     request_line = request_rows.first.split
-
     headers = parse_headers(request_rows)
 
     {
@@ -69,8 +68,8 @@ class Request
   def parse_headers(request_rows)
     request_rows
       .drop(1) # remove request line
-      .to_h { |row| row.split(': ') } # {header_1: header_value_1, ...}
-      .map do |key, value| # { header1: value1, header2: [value2_0, value2_1] }
+      .to_h do |row| # { header1: value1, header2: [value2_0, value2_1] }
+        key, value = row.split(': ')
         if value.include?(', ')
           [key, value.split(', ')]
         else
